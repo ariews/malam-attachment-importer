@@ -16,7 +16,7 @@ class Malam_Attachment
     /**
      * @return Attachment
      */
-    public function factory()
+    public static function factory()
     {
         return new Attachment();
     }
