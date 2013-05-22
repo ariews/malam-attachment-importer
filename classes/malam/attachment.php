@@ -9,6 +9,11 @@ defined('SYSPATH') or die('No direct script access.');
 class Malam_Attachment
 {
     /**
+     * @var Config_Group
+     */
+    private $config;
+
+    /**
      * @return Attachment
      */
     public function factory()
@@ -24,7 +29,7 @@ class Malam_Attachment
 
     public function run()
     {
-        $config   = Kohana::$config->load('attachment');
+        $config   = $this->config = Kohana::$config->load('attachment');
          /* @var $config Config_Group */
 
         /**
@@ -43,6 +48,8 @@ class Malam_Attachment
         $excludes = Arr::get($config->folder, 'EXCLUDES');
         $save_to  = Arr::get($config->image,  'save_to' );
         $ds       = DIRECTORY_SEPARATOR;
+
+        $this->debug(__('Trying to loggin to IMAP server'));
 
         /**
          * Try to logged in and get all mail
@@ -71,8 +78,17 @@ class Malam_Attachment
 
                 $from   = $parser->getHeader('from');
 
+                $this->debug(__('Getting email from :sender [:uid :i/:m]', array(
+                    ':sender'   => $from,
+                    ':uid'      => $numb,
+                    ':i'        => ($i+1),
+                    ':m'        => $max
+                )));
+
                 if (! preg_match("#{$excludes}#i", $from))
                 {
+                    $this->debug(__('Processing with this email'));
+
                     $subject = preg_replace('/[^a-z0-9-_]/i', '-', $parser->getHeader('subject'));
                     $subject = preg_replace('/-{1,}/', ' ', $subject);
 
@@ -82,11 +98,19 @@ class Malam_Attachment
 
                         $file = $save_to . $ds . $attachment->getFilename();
                         file_put_contents($file, $attachment->getContent());
+
+                        $this->debug(__('Getting image: :filename', array(
+                            ':filename' => $attachment->getFilename()
+                        )));
                     }
 
                     $mfolder = $ffolder;
                     unset($data);
                 }
+
+                $this->debug(__('Email moved to :folder', array(
+                    ':folder'   => $mfolder
+                )));
 
                 /**
                  * http://www.electrictoolbox.com/delete-message-php-imap-gmail/
@@ -100,16 +124,30 @@ class Malam_Attachment
                 imap_mail_move($inbox, $numb, $mfolder);
                 imap_delete($inbox, $numb);
             }
+            catch (ORM_Validation_Exception $e)
+            {
+                $this->debug(__("Validation Error:\n\t:error", array(
+                    ':error'    => print_r($e->errors(), TRUE),
+                )));
+            }
             catch (ErrorException $e)
             {
-                Kohana::$log->add(Log::DEBUG, "Catch Error:\n\t:error\nTrace: :trace", array(
+                $this->debug(__("Catch Error:\n\t:error\nTrace: :trace", array(
                     ':error'    => $e->getMessage(),
                     ':trace'    => $e->getTraceAsString()
-                ))->write();
+                )));
             }
         }
 
         imap_expunge($inbox);
         imap_close($inbox);
+    }
+
+    private function debug($message)
+    {
+        if ($this->config->debug)
+        {
+            Kohana::$log->add(Log::DEBUG, $message)->write();
+        }
     }
 }

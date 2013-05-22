@@ -52,5 +52,7 @@ return array(
          * !!Make sure this folder exists
          */
         'EFOLDER'   => 'Excludes',
-    )
+    ),
+
+    'debug'         => FALSE,
 );
