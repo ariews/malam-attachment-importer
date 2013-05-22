@@ -11,7 +11,7 @@ class Malam_Attachment
     /**
      * @var Config_Group
      */
-    private $config;
+    protected $config;
 
     /**
      * @return Attachment
@@ -143,7 +143,7 @@ class Malam_Attachment
         imap_close($inbox);
     }
 
-    private function debug($message)
+    protected function debug($message)
     {
         if ($this->config->debug)
         {
